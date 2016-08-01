@@ -1,0 +1,2 @@
+# pwmud
+Python Web MUD

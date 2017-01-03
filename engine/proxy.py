@@ -8,3 +8,9 @@ class Proxy:
         # don't allow access to anything that's non-callable or
         # starts with "_"
         return getattr(self.engine.objects[self.objname], attr)
+
+    def __setattr__(self, attr, value):
+        raise py.NotImplementedError
+
+    def __delattr__(self, attr, value):
+        raise py.NotImplementedError

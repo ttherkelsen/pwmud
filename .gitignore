@@ -87,3 +87,13 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Emacs backup files
+*~
+
+# Python source and install
+python-src/
+python-install/
+
+# PWMud - Don't version control the persistence data files
+corelib.data/

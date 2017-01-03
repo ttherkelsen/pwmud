@@ -1,6 +1,7 @@
 import argparse, os.path, sys, traceback, json
 
 import network.loop, errors, file_adapters
+from proxy import Proxy
 
 # Efun imports
 
@@ -10,18 +11,6 @@ class Engine(object):
 
     def __init__(self, config_file):
         self.config_file = config_file
-
-        class Proxy:
-            engine = self
-            def __init__(self, objname):
-                self.objname = objname
-
-            def __getattribute__(self, attr):
-                # FIXME: Check for missing object, missing attribute,
-                # don't allow access to anything that's non-callable or
-                # starts with "_"
-                return getattr(self.engine.objects[self.objname], attr)
-        self.Proxy = Proxy
 
     def setup(self):
         self.objects = {}
@@ -154,9 +143,9 @@ class Engine(object):
         # of the object
         # FIXME: This has to be guarded against errors, of course
         if type(obj) is str:
-            return self.Proxy(obj)
+            return self.Proxy(self, obj)
 
-        return self.Proxy(obj._objname)
+        return self.Proxy(self, obj._objname)
     
     def efun_load_class(self, path):
         return self.load_class(path)

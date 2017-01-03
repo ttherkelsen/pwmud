@@ -1,7 +1,6 @@
 import argparse, os.path, sys, traceback, json
 
 import network.loop, errors, file_adapters
-from Proxy import *
 
 # Efun imports
 

@@ -1,4 +1,4 @@
-import argparse, os.path, sys, traceback, json
+import argparse, os.path, sys, traceback, json, inspect
 
 import network.loop, errors, file_adapters
 from proxy import Proxy
@@ -17,11 +17,16 @@ class Engine(object):
         self.classes = {}
         self.builtins = {
             '__build_class__': __builtins__.__build_class__,
-            '__name__': 'engine',
             'py': __builtins__,
+            'super': __builtins__.super,
+            '__name__': 'engine',
             
             'load_class': self.efun_load_class,
             'clone_object': self.efun_clone_object,
+            'load_object': self.efun_load_object,
+            'proxy': self.efun_proxy,
+            'send_message': self.efun_send_message,
+            
         }
         self.connections = {}
         self.guid = 0
@@ -120,8 +125,9 @@ class Engine(object):
         # FIXME: Should loaded object also have GUID?
         if pwmfn not in self.objects:
             cls = self.load_class(pwmfn)
-            obj._objname = pwmfn
             obj = cls()
+            obj._objname = pwmfn
+            obj.create()
             self.objects[pwmfn] = obj
 
         return self.objects[pwmfn]
@@ -129,7 +135,7 @@ class Engine(object):
     def clone_object(self, pwmfn):
         cls = self.load_class(pwmfn)
         obj = cls()
-        objname = pwmfn +"#"+ self.next_guid()
+        objname = "%s#%s" % (pwmfn, self.next_guid())
         obj._objname = objname
         obj.create()
         self.objects[objname] = obj
@@ -143,12 +149,15 @@ class Engine(object):
         # of the object
         # FIXME: This has to be guarded against errors, of course
         if type(obj) is str:
-            return self.Proxy(self, obj)
+            return Proxy(self, obj)
 
-        return self.Proxy(self, obj._objname)
+        return Proxy(self, obj._objname)
     
     def efun_load_class(self, path):
         return self.load_class(path)
+
+    def efun_load_object(self, path):
+        return self.proxy(self.load_object(path))
 
     def efun_clone_object(self, path):
         return self.proxy(self.clone_object(path))
@@ -156,11 +165,35 @@ class Engine(object):
     def efun_proxy(self, obj):
         self.proxy(obj)
 
+    def efun_send_message(self, obj, message):
+        # Obj must be interactive so find it in the connection list
+        # FIXME: How should this be optimised?
+        for fd, data in self.connections.items():
+            handler, objname = data
+            if objname == obj._objname:
+                handler.send_message(message)
+                break
+        else:
+            raise errors.ObjectNotInteractive('passed object is not interactive')
+        
+
+    def proxy2real(self, proxyobj):
+        return self.objects[object.__getattribute__(proxyobj, 'objname')]
+        
     def network_connect(self, handler):
         socket = handler.transport.get_extra_info('socket')
-        print(socket.fileno(), socket.getpeername(), socket.getsockname())
-        # FIXME: ask the controller object for a connection object
-        self.connections[socket.fileno()] = 1 # FIXME: Should be name of object
+        fd, raddr, laddr = socket.fileno(), socket.getpeername(), socket.getsockname()
+        # FIXME: Should be wrapped in something that catches errors
+        obj = self.objects[self.config.controller].network_connect(raddr, laddr)
+        # FIXME: Don't assume connect() always returns an object or None
+        if obj is None:
+            # abort
+            return
+
+        obj = self.proxy2real(obj)
+        self.connections[fd] = (handler, obj._objname)
+        # FIXME: Should be wrapped
+        obj.network_connect()
 
     def network_disconnect(self, handler):
         # FIXME: tell the connection object that it was disconnected and it no

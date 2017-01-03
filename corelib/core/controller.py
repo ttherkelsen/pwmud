@@ -7,7 +7,7 @@ class controller(load_class("/core/classes/core")):
         # FIXME: Adjust __builtins__ with overrides and aliases 
         pass
 
-    def connect(self, raddr, laddr): # Engine interface
+    def network_connect(self, raddr, laddr): # Engine interface
         if not self.allow_connect(raddr[0], raddr[1]):
             return None
 

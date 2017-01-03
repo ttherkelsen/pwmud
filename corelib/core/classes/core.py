@@ -14,3 +14,6 @@ class core:
 
     def __init__(self, *args, **kwargs):
         pass
+
+    def create(self):
+        pass

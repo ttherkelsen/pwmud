@@ -22,12 +22,15 @@ class WebSocketProtocol(asyncio.Protocol):
         self.frame = None
         self.payload = None
 
-        self.engine.network_connect(self)
+        # FIXME: Deal with connections that never complete the websocket handshake
 
         
     def connection_lost(self, exc):
         print('Connection lost from {}'.format(self.transport.get_extra_info('peername')))
-        self.engine.network_disconnect(self)
+        # We don't want to tell the engine about lost connections
+        # unless they actually have completed the websocket handshake
+        if self.handshake_complete:
+            self.engine.network_disconnect(self)
 
         
     def pause_writing(self):
@@ -125,8 +128,11 @@ class WebSocketProtocol(asyncio.Protocol):
             "Sec-WebSocket-Accept: %s" % accept.decode(),
             "\r\n",
         ]))
-        self.handshake_complete = True
         self.message = None
+        self.handshake_complete = True
+
+        self.engine.network_connect(self)
+        
 
     def handle_opcode_0(self, frame): # continuation frame
         print('[opcode 0] [frame payload]', repr(frame.payload))

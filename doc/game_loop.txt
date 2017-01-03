@@ -1,0 +1,11 @@
+Pseudo code for the main game loop.
+
+loop forever:
+   if controlled shutdown requested:
+     break out of loop and do controlled shutdown
+     
+   delay = <time until next delayed call, or MAX_DELAY, whichever is smallest>
+   ask os for activity on sockets, wait <delay>
+   act on socket activity if any
+   run MAX_DELAYED_CALLS pending delayed calls
+   run MAX_OBJECT_SAVES pending object saves

@@ -1,0 +1,42 @@
+Object Persistance
+------------------
+
+Only PWMUD objects are saved.
+
+A PWMUD object is a standard Python object that extends the Core
+object and has been instantiated through using either the
+clone_object() or load_object() efun.
+
+The Core object uses a mechanism (to be decided how exactly) which
+allows each object to maintain a list of which of its attributes have
+been changed since the last save and thus need to be saved the next
+time it is the object's turn to be saved.
+
+Objects do not decide when they get saved, the engine decides this, as
+part of its core game loop.  The exact time depends on a number of
+factors:
+
+- How many objects has been changed?  The engine will only save up to
+  a certain number of objects per loop, so if a lot of objects are
+  changed, it may take several game loops to save all objects.
+  Settings exists to adjust how many objects are saved per loop.
+
+- How much has the object been changed.  Objects with many changes are
+  prioritised higher in the list and will be saved sooner than objects
+  with fewer changes.
+
+- How long has the object been in the list of pending saves?  The
+  longer an object has been pending a save, the higher priority it
+  will get in the save queue.
+
+When an object is saved, the data is appended to the object's save
+file.  The idea is that only changes are saved and by appending you
+avoid having to rewrite the entire file as most objects will only have
+a few attributes changed in its life cycle.
+
+The disadvantage with the incremental approach is that you have to run
+periodic clean-ups of the save files to reduce their size and thus
+loading times.
+
+FIXME: Decide mechanism for detecting "dirty" attributes
+FIXME: How to deal with very large data structures?

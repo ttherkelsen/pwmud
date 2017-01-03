@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <!--link rel="stylesheet" type="text/css"
+          href="https://fonts.googleapis.com/css?family=Droid+Sans+Mono"-->
+    <style>
+      body {
+        font-family: Consolas;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="terminal-window" style="xline-height: 1.212">
+      <div id="terminal-row-1">
+	<span id="terminal-cell-1_1">&#x250c;</span><span id="terminal-cell-1_2">&#x2510;</span>
+      </div>
+      <div id="terminal-row-2">
+	<span id="terminal-cell-2_1">&#x2514;</span><span id="terminal-cell-2_2">&#x2518;</span>
+      </div>
+    </div>
+  </body>
+  <script>
+    var tag = document.getElementById("terminal-cell-2_2");
+    tag.style.backgroundColor = "#000000";
+    tag.style.color = "#ffffff";
+    tag = document.getElementById("terminal-cell-2_1");
+    tag.style.backgroundColor = "#ff0000";
+    tag.style.color = "#ffffff";
+    tag = document.getElementById("terminal-cell-1_1");
+    tag.style.backgroundColor = "#000000";
+    tag.style.color = "#ffffff";
+    tag = document.getElementById("terminal-cell-1_2");
+    tag.style.backgroundColor = "#ff0000";
+    tag.style.color = "#ffffff";
+  </script>
+</html>

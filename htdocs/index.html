@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <title>PyWebMUD v0.1a</title>
+
+    <!-- Core -->
+    <script src="js/Lowtek.utils.js"></script>
+    <script src="js/Lowtek.dom.js"></script>
+    <script src="js/Lowtek.Core.js"></script>
+
+    <!-- Terminal -->
+    <script src="js/Lowtek.terminal.ScreenVM.js"></script>
+    <script src="js/Lowtek.terminal.Terminal.js"></script>
+
+    <!-- Managers -->
+    <script src="js/Lowtek.manager.Font.js"></script>
+
+    <!-- Data -->
+    <script src="js/font/manifest.js"></script>
+    <script src="js/font/9x15/0.js"></script>
+
+    <!-- Runtime Setup -->
+    <script src="js/Lowtek.setup.js"></script>
+  </head>
+  <body onLoad="Lowtek.runtime.setup();">
+    <div id="pywebmud-client">
+      <canvas id="pwm-canvas" width="320" height="30"></canvas>
+    </div>
+  </body>
+</html>

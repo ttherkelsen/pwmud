@@ -1,0 +1,109 @@
+Stage: Initial Connection
+
+When a new connection is made and the initial WebSocket protocol
+negotiation is successful,
+
+   controller.new_connection(local_endpoint, remote_endpoint)
+   local_endpoint = (local IP, local port)
+   remote_endpoint = (remote IP, remote port)
+
+is called.  This method must return a PWMud object which should
+handle the new connection.  This object must not already be handling
+a connection.
+
+If a PWMud object is not returned, or the returned object is already
+handling a connection, the new connection will immediately be aborted.
+
+If an exception is raised from new_connection(), the connection will
+immediately be aborted.
+
+After new_connection() returns a delay of MAXTIME_INITIAL_CONNECTION
+(default 5 seconds) is begun.  If the connection is still in the
+initial stage when this delay times out, the connection will be
+aborted.
+
+
+Stage: Configuring Conection
+
+The connection object will remain in the "Initial" stage until it
+receives the following message from the remote client:
+
+   type: init
+   ready: true
+
+At this point, the connection object will switch to "Configuring" stage
+and begin to send configuration commands to the remote client.
+
+It will end the configuration commands with:
+
+   type: init
+   completed: true
+
+If the connection object remains in this stage for longer than
+MAXTIME_CONFIGURING_CONNECTION (default 30 seconds) it will abort the
+connection.
+
+
+Stage: Unauthorised Connection
+
+The connection object will enter the "Unauthorised" stage once the
+remote client answers the end of configuration message with:
+
+   type: init
+   completed: true
+
+In this stage, the connection object will try to authorise the
+connection (ie., ask for user login).
+
+If the connection object remains in this stage for longer than
+MAXTIME_UNAUTH_CONNECTION (default 10 minutes) it will abort the
+connection.
+
+If there has been no data received from the remote client for more
+than MAXIDLE_UNAUTH_CONNECTION (default 1 minute) it will abort
+the connection.
+
+
+Stage: Authorised Connection
+
+Once the connection object has succesfully authorised the remote
+client, it will enter this stage.
+
+If there is a connection object with the same credentials (whether or
+not it is in authorised or disconnected stage), that connection
+object will take over the connection and this connection object will
+be destroyed.  For simplicity in handling connections, it is not
+possible for the same credentials to be connected more than once.
+This restriction may be removed in the future.
+
+Note that if an authorised connection object takes over the new
+connection, the old connection will be immediately closed, effectively
+disconnecting whatever remote client connected to it.
+
+If there has been no data received from the remote client for more
+than MAXIDLE_AUTH_CONNECTION (default 10 minute) it will disconnect
+the connection.
+
+
+Stage: Disconnected Connection
+
+If a connection object (or the remote client) disconnects without
+logging out (deauthorising), the connection object will enter this
+stage.
+
+No remote input is expected in this stage and no data may be sent
+to the remote client.
+
+After the connection object has been in this stage for
+longer than MAXIDLE_DISCONN_CONNECTION (default 30 minutes) the
+connection object is destroyed.
+
+
+Stage: Deauthorised Connection
+
+If the connection is deauthorised (either because the remote client
+issues a logout command, or from being deauthorised locally) it enters
+this stage.
+
+A deauthorised connection is immediately closed, causing the remote
+client to be disconnected.

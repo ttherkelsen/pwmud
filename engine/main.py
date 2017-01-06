@@ -1,7 +1,6 @@
 import argparse, os.path, sys, traceback, json, inspect
 
 import network.loop, errors, file_adapters
-from proxy import Proxy
 
 # Efun imports
 
@@ -24,19 +23,19 @@ class Engine(object):
             'load_class': self.efun_load_class,
             'clone_object': self.efun_clone_object,
             'load_object': self.efun_load_object,
-            'proxy': self.efun_proxy,
             'send_message': self.efun_send_message,
             
         }
         self.connections = {}
         self.guid = 0
+        self.object_stack = []
 
     def run(self):
         self.setup()
         self.load_config()
         self.load_object(self.config.controller)
 
-        self.objects[self.config.controller].init()
+        self.start_call(self.config.controller, 'init')
         network.loop.run(self)
 
     def cmd_version(self):
@@ -125,85 +124,85 @@ class Engine(object):
         # FIXME: Should loaded object also have GUID?
         if pwmfn not in self.objects:
             cls = self.load_class(pwmfn)
-            obj = cls()
-            obj._objname = pwmfn
-            obj.create()
+            obj = cls(pwmfn, 'load_object')
+            self.call_object(obj, 'create')
             self.objects[pwmfn] = obj
 
         return self.objects[pwmfn]
         
     def clone_object(self, pwmfn):
         cls = self.load_class(pwmfn)
-        obj = cls()
         objname = "%s#%s" % (pwmfn, self.next_guid())
-        obj._objname = objname
-        obj.create()
+        obj = cls(objname, 'clone_object')
+        self.call_object(obj, 'create')
         self.objects[objname] = obj
         return obj
 
-    def proxy(self, obj):
-        # obj can be an actual Python instantiated class or a string
-        # if obj is a string, we take it as is
-        # if obj is an object, we assume it has the core class as one
-        # of its ancestors and we use obj._objname to retrieve the name
-        # of the object
-        # FIXME: This has to be guarded against errors, of course
-        if type(obj) is str:
-            return Proxy(self, obj)
+    def call_object(self, obj, method, *args, **kwargs):
+        obj = self.objref2real(obj)
+        self.object_stack.append(obj.get_objname())
+        val = getattr(obj, method)(*args, **kwargs)
+        del self.object_stack[-1]
+        return val
+    
+    def start_call(self, obj, method, *args, **kwargs):
+        self.object_stack = []
+        # FIXME: Catch any errors sensibly
+        return self.call_object(obj, method, *args, **kwargs)
 
-        return Proxy(self, obj._objname)
+    def objref2real(self, objref):
+        if type(objref) is str:
+            return self.objects[objref]
+        return objref
+        
+    def efun_call_object(self, obj, method, *args, **kwargs):
+        return self.call_object(obj, method, *args, **kwargs)
     
     def efun_load_class(self, path):
         return self.load_class(path)
 
     def efun_load_object(self, path):
-        return self.proxy(self.load_object(path))
+        return self.load_object(path).get_objname()
 
     def efun_clone_object(self, path):
-        return self.proxy(self.clone_object(path))
+        return self.clone_object(path).get_objname()
 
-    def efun_proxy(self, obj):
-        self.proxy(obj)
-
-    def efun_send_message(self, obj, message):
+    def efun_send_message(self, message):
+        current_object = self.object_stack[-1]
         # Obj must be interactive so find it in the connection list
         # FIXME: How should this be optimised?
         for fd, data in self.connections.items():
             handler, objname = data
-            if objname == obj._objname:
+            if objname == current_object:
                 handler.send_message(message)
                 break
         else:
             raise errors.ObjectNotInteractive('passed object is not interactive')
         
 
-    def proxy2real(self, proxyobj):
-        return self.objects[object.__getattribute__(proxyobj, 'objname')]
         
     def network_connect(self, handler):
         socket = handler.transport.get_extra_info('socket')
         fd, raddr, laddr = socket.fileno(), socket.getpeername(), socket.getsockname()
         # FIXME: Should be wrapped in something that catches errors
-        obj = self.objects[self.config.controller].network_connect(raddr, laddr)
+        objname = self.start_call(self.config.controller, 'network_connect', raddr, laddr)
         # FIXME: Don't assume connect() always returns an object or None
-        if obj is None:
+        if objname is None:
             # abort
             return
 
-        obj = self.proxy2real(obj)
-        self.connections[fd] = (handler, obj._objname)
-        # FIXME: Should be wrapped
-        obj.network_connect()
+        self.connections[fd] = (handler, objname)
+        self.start_call(objname, 'network_connect')
 
     def network_disconnect(self, handler):
-        # FIXME: tell the connection object that it was disconnected and it no
-        # longer interactive, if it exists
-        socket = handler.transport.get_extra_info('socket')
-        del self.connections[socket.fileno()]
+        # FIXME: Error safety?
+        fd = handler.transport.get_extra_info('socket').fileno()
+        self.start_call(self.connections[fd][1], 'network_disconnect')
+        del self.connections[fd]
 
     def network_message(self, message, handler):
-        print("Engine: Received message:", message)
-        handler.send_message({'type': 'init', 'message': 'You sent: %s' % message})
+        fd = handler.transport.get_extra_info('socket').fileno()
+        self.start_call(self.connections[fd][1], 'network_message', message)
 
     def housekeeping(self):
         # The first time this is called is actually just before the network loop is started

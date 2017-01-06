@@ -3,11 +3,12 @@ class connection(load_class("/core/classes/core")):
         pass
 
     def network_connect(self):
-        send_message(self, "Hello world!")
+        send_message("Hello world!")
 
     def network_message(self, message): # Engine interface
-        pass
+        py.print('Connection obj %s network_message:' % self.get_objname(), message)
+        send_message({'type': 'init', 'message': 'You sent: %s' % message})
 
     def network_disconnect(self): # Engine interface
-        pass
+        py.print('Connection obj %s network_disconnect' % self.get_objname())
         

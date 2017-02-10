@@ -10,10 +10,13 @@ class WebSocketProtocol(asyncio.Protocol):
     #
     # --- Interface methods begin ---
     #
+
+    def debug_log(self, msg):
+        self.engine.debug(msg, 'pwmud.network')
     
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
-        print('Connection from {}'.format(peername))
+        self.debug_log('Connection from {}'.format(peername))
         self.transport = transport
         self.message = None
         self.handshake_complete = False
@@ -26,7 +29,7 @@ class WebSocketProtocol(asyncio.Protocol):
 
         
     def connection_lost(self, exc):
-        print('Connection lost from {}'.format(self.transport.get_extra_info('peername')))
+        self.debug_log('Connection lost from {}'.format(self.transport.get_extra_info('peername')))
         # We don't want to tell the engine about lost connections
         # unless they actually have completed the websocket handshake
         if self.handshake_complete:
@@ -35,12 +38,12 @@ class WebSocketProtocol(asyncio.Protocol):
         
     def pause_writing(self):
         # Called when we reach a high-water buffer mark (FIXME: What's the value?)
-        print('Pause writing called')
+        self.debug_log('Pause writing called')
 
     
     def resume_writing(self):
         # Called to resume writing after writing has been previously paused
-        print('Resume writing called')
+        self.debug_log('Resume writing called')
 
     
     def data_received(self, data):
@@ -53,14 +56,14 @@ class WebSocketProtocol(asyncio.Protocol):
         # Called when the remote end wishes to close the connection
         # Should return a boolean false value to let the transport object close
         # itself as it pleases instead of relying on this object closing it
-        print('EOF received called')
+        self.debug_log('EOF received called')
 
     #
     # --- Interface methods end ---
     #
         
     def send_data(self, message):
-        print("Send data: %r" % message)
+        self.debug_log("Send data: %r" % message)
         self.transport.write(type(message) is str and message.encode() or message)
 
     def send_message(self, obj):
@@ -76,7 +79,7 @@ class WebSocketProtocol(asyncio.Protocol):
             self.message = message
             return # FIXME: Protect against hanging connections
 
-        print('Data received: {!r}'.format(message))
+        self.debug_log('Data received: {!r}'.format(message))
 
         lines = message.split("\r\n")[:-2]
         parts = lines[0].split(" ")
@@ -135,7 +138,7 @@ class WebSocketProtocol(asyncio.Protocol):
         
 
     def handle_opcode_0(self, frame): # continuation frame
-        print('[opcode 0] [frame payload]', repr(frame.payload))
+        self.debug_log('[opcode 0] [frame payload] %r' % frame.payload)
         if not self.continuation:
             # We must be in continuation mode before opcode 0 frames are legal
             return self.abort_connection("got opcode 0 frame while not in continuation mode")
@@ -153,7 +156,7 @@ class WebSocketProtocol(asyncio.Protocol):
         
 
     def handle_opcode_1(self, frame): # text frame
-        print('[opcode 1] [frame payload]', repr(frame.payload))
+        self.debug_log('[opcode 1] [frame payload] %r' % frame.payload)
         if self.continuation:
             # Not legal to send opcode 1 frame while we are in continuation mode
             return self.abort_connection("got opcode 1 frame while in continuation mode")
@@ -166,17 +169,17 @@ class WebSocketProtocol(asyncio.Protocol):
             self.continuation = True
 
     def handle_opcode_8(self, frame): # ping
-        print('[opcode 8] [frame payload]', repr(frame.payload))
+        self.debug_log('[opcode 8] [frame payload] %r' % frame.payload)
         self.send_data(WSPongFrame().render())
 
     def handle_opcode_9(self, frame): # pong
-        print('[opcode 9] [frame payload]', repr(frame.payload))
+        self.debug_log('[opcode 9] [frame payload] %r' % frame.payload)
         # We don't need to do anything when we receive a pong
 
     def handle_opcode_10(self, frame): # connection close
-        print('[opcode 10] [frame payload]', repr(frame.payload))
+        self.debug_log('[opcode 10] [frame payload] %r' % frame.payload)
         if self.closing_connection:
-            print('Closing connection')
+            self.debug_log('Closing connection')
             self.transport.close()
         else:
             self.closing_connection = True
@@ -193,7 +196,7 @@ class WebSocketProtocol(asyncio.Protocol):
 
         self.frame = None
 
-        print('[frame] Data received: {!r}'.format(data))
+        self.debug_log('[frame] Data received: {!r}'.format(data))
         
         # FIXME: Should raise exception instead of returning the error message
         err = wsf.validate()
@@ -213,7 +216,7 @@ class WebSocketProtocol(asyncio.Protocol):
         
 
     def abort_connection(self, message):
-        print("Bad Frame: %s" % message)
+        self.debug_log("Bad Frame: %s" % message)
         if self.closing_connection:
             # If we get an error while we are trying to close the connection
             # just close it silently
@@ -223,12 +226,13 @@ class WebSocketProtocol(asyncio.Protocol):
             self.closing_connection = True
         
     def http_bad_request(self, message):
-        print("Bad Request: %s" % message)
+        self.debug_log("Bad Request: %s" % message)
         self.send_data("HTTP/1.1 400 Bad Request\r\n\r\n")
         self.send_data(message)
         self.transport.close()
 
 def run(engine):
+    engine.debug('Setting up asyncio network loop', 'pwmud.network')
     loop = asyncio.get_event_loop()
     # Each client connection will create a new protocol instance
     coro = loop.create_server(functools.partial(WebSocketProtocol, engine), engine.config.listen_ip, engine.config.listen_port)
@@ -239,14 +243,16 @@ def run(engine):
         loop.call_later(engine.config.housekeeping_interval, tick)
 
     # Serve requests until Ctrl+C is pressed
-    print('Serving on {}'.format(server.sockets[0].getsockname()))
+    engine.debug('Listening on {}'.format(server.sockets[0].getsockname()), 'pwmud.network')
     try:
         tick()
         loop.run_forever()
     except KeyboardInterrupt:
-        print("\nShutting down PWMud!")
+        print() # Clear 'ctrl-c'
 
     # Close the server
+    engine.debug('Closing asyncio network loop', 'pwmud.network')
     server.close()
     loop.run_until_complete(server.wait_closed())
     loop.close()
+    engine.debug('Asyncio network loop ended', 'pwmud.network')

@@ -1,4 +1,4 @@
-import argparse, os.path, sys, traceback, json, inspect
+import argparse, os.path, sys, traceback, json, inspect, logging, inspect
 
 import network.loop, errors, file_adapters
 
@@ -8,8 +8,12 @@ class Engine(object):
     version = 'PWMud 0.1a'
     class config: pass
 
-    def __init__(self, config_file):
-        self.config_file = config_file
+    def __init__(self, args):
+        self.config_file = args.config
+        self.debug_log_file = args.logfile
+        self.console_log_level = logging.getLevelName(args.console_log_level)
+        self.console_debug_names = [ t for t in args.console_debug_names.split(",") if t ]
+        self.setup_logging()
 
     def setup(self):
         self.objects = {}
@@ -19,28 +23,93 @@ class Engine(object):
             'py': __builtins__,
             'super': __builtins__.super,
             '__name__': 'engine',
-            
+
+            # Core functionality
             'load_class': self.efun_load_class,
+            
+            # Object instantiation
             'clone_object': self.efun_clone_object,
             'load_object': self.efun_load_object,
+
+            # Network interface
             'send_message': self.efun_send_message,
+
+            # Logging
+            'log': self.efun_log,
             
         }
         self.connections = {}
         self.guid = 0
         self.object_stack = []
 
+    def setup_logging(self):
+        # 1 - All logging goes to the logging file (default pwmud.log)
+        # 2 - INFO or higher goes to the screen (stderr)
+        # 3 - Selected names, regardless of level, goes to the screen (stderr)
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+
+        fh = logging.FileHandler(self.debug_log_file)
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(logging.Formatter('%(asctime)s:%(name)s:%(levelname)s:%(message)s'))
+        root.addHandler(fh)
+
+        sh = logging.StreamHandler()
+        sh.setLevel(self.console_log_level)
+        sh.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
+        root.addHandler(sh)
+
+        def console_log_filter(rec):
+            if rec.levelno >= self.console_log_level:
+                return False # Already emitted
+            
+            for name in self.console_debug_names:
+                if name in rec.name:
+                    return True
+
+            return False
+        
+        sh = logging.StreamHandler()
+        sh.setLevel(logging.DEBUG)
+        sh.setFormatter(logging.Formatter('%(asctime)s [%(name)s] %(message)s'))
+        sh.addFilter(console_log_filter)
+        root.addHandler(sh)
+
+        
+        
     def run(self):
+        self.log("%s started" % self.version)
+        self.debug("Setting up")
         self.setup()
+        self.debug("Loading config")
         self.load_config()
+        self.debug("Loading controller object")
         self.load_object(self.config.controller)
 
+        self.debug("Running controller.init()")
         self.start_call(self.config.controller, 'init')
-        network.loop.run(self)
 
-    def cmd_version(self):
-        print(self.version)
-        sys.exit()
+        self.debug("Starting network loop")
+        network.loop.run(self)
+        self.debug("Network loop ended, performing final cleanup before exiting")
+
+        # FIXME: Do stuff ;-)
+
+        self.log("%s stopped" % self.version)
+
+    def debug(self, msg, name=None, funcname=True, callstack=1):
+        if name is None:
+            name = 'pwmud.engine'
+        if funcname:
+            name += "."+ inspect.stack()[callstack].function
+        self.log(msg, name, logging.DEBUG)
+
+    def log(self, msg, name=None, level=logging.INFO):
+        if name is None:
+            name = 'pwmud.engine'
+        logger = logging.getLogger(name)
+        logger.log(level, msg)
+        
 
     def next_guid(self):
         self.guid += 1
@@ -177,9 +246,10 @@ class Engine(object):
                 handler.send_message(message)
                 break
         else:
-            raise errors.ObjectNotInteractive('passed object is not interactive')
+            raise errors.ObjectNotInteractive('current object is not interactive')
         
-
+    def efun_log(self, message):
+        self.debug('%s:%s' % (self.objref2real(self.object_stack[-1]).get_objname(), message), 'pwmud.library', callstack=2)
         
     def network_connect(self, handler):
         socket = handler.transport.get_extra_info('socket')
@@ -208,17 +278,31 @@ class Engine(object):
         # The first time this is called is actually just before the network loop is started
         #print("Housekeeping called")
         pass
-        
 
+    
 if __name__ == '__main__':
-    # FIXME: Setup logging module so it can be used instead of prints everywhere
     cmdline = argparse.ArgumentParser(description="Run a PWMud.")
-    cmdline.add_argument('-v', '--version', action="store_true", default=False, help='Print version and exit.')
+    cmdline.add_argument(
+        '-v', '--version', action="version", version=Engine.version,
+        help='Print version and exit.'
+    )
+    cmdline.add_argument(
+        '-l', '--logfile', default="pwmud.debug.log",
+        help='Which file to log debug info to, defaults to "pwmud.debug.log".'
+    )
+    cmdline.add_argument(
+        '-c', '--console-log-level',
+        default='INFO', choices=('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
+        help='Minimum logging level, defaults to "INFO", legal levels: DEBUG INFO WARNING ERROR CRITICAL.'
+    )
+    cmdline.add_argument(
+        '-d', '--console-debug-names',
+        default='',
+        help='Which log names to always print to console, regardless of log level.  Matching is simple substring.  Separate multiple names with ",".'
+    )
     cmdline.add_argument('config', help='Path to config file')
     args = cmdline.parse_args()
 
-    engine = Engine(args.config)
-    if args.version:
-        engine.cmd_version()
+    engine = Engine(args)
     engine.run()
 

@@ -1,3 +1,7 @@
 #!/bin/bash
 
-/raid/www/lowtek.dk/pwmud-dev-live/python-install/bin/python3 /raid/www/lowtek.dk/pwmud-dev-live/engine/main.py /raid/www/lowtek.dk/pwmud-dev-live/corelib_config.py
+rm pwmud.debug.log
+
+/raid/www/lowtek.dk/pwmud-dev-live/python-install/bin/python3 /raid/www/lowtek.dk/pwmud-dev-live/engine/main.py /raid/www/lowtek.dk/pwmud-dev-live/corelib_config.py "$@"
+
+cat pwmud.debug.log

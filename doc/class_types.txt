@@ -1,0 +1,10 @@
+3 different class paradigms are useful for PWMud:
+
+Objects - These classes extend (either directly or indirectly) the
+Core object (/core/classes/core) and are meant to be cloned or loaded
+as needed
+
+Classes - Similar to objects, except they are only meant to be
+inherited by other classes.  They should not be cloned or loaded.
+
+Mixins - Similar to Classes, except they do not extend the Core object.

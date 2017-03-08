@@ -1,0 +1,28 @@
+The terminal has two modes of parsing text output from the server:
+character or function.
+
+When the terminal reads the ASCII code 7 character (javascript string
+literal "\x07", python string literal "\a") in output, it toggles
+between the two modes.  The terminal always starts in character mode.
+
+When in character mode, every character of output is added to the
+screen following the rules governing the terminal.  Things like line
+wrap mode, window sizes and placement, can affect how characters are
+printed to the terminal.
+
+When in function mode, ouput is split on ASCII code 8 (javascript
+"\x08", python "\b").  Each of these function chunks is then expected
+to follow this format:
+
+    <function name>;<arg1>;...;<argN>
+
+<function name> is the name of the terminal function to run, eg.,
+init.  Function names may only contain the ascii character a through z
+(only lowercase).
+
+<arg1> ... <argN> is a ";"-separated list of arguments for the given
+function.  If a ";" character is needed in an arg, it must be escaped, eg.:
+
+    windowtitle;mywin2;Semicolon \; in window title
+
+

@@ -1,15 +1,15 @@
 Lowtek.util.ns('Lowtek.terminal');
 
-Lowtek.terminal.ScreenVM = function(opts) {
+Lowtek.client.ScreenVM = function(opts) {
     var me = this;
 
     Lowtek.Core.call(me, opts);
     me.init();
 };
 
-Lowtek.util.inherit(Lowtek.terminal.ScreenVM, Lowtek.Core);
+Lowtek.util.inherit(Lowtek.client.ScreenVM, Lowtek.Core);
 
-Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
+Lowtek.util.merge(Lowtek.client.ScreenVM.prototype, {
     /* screen is a 2d array representing the characters of the screen,
      * divided into rows and columns.  Each character is always an
      * array:
@@ -20,12 +20,6 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
     width: null,
     height: null,
     historySize: null,
-    defaults: {
-	glyph: 32,
-	colours: [ [ 0, 0, 0, 255 ], [ 255, 255, 255, 255 ] ],
-    },
-    stream: null,
-    funcMode: null,
     cursor: null,
 
     init: function() {
@@ -38,8 +32,6 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
 	}
 	me.screen = screen;
 	me.history = [];
-	me.stream = [];
-	me.funcMode = false;
 	me.cursor = {
 	    position: { x: 0, y: 0 },
 	    colours: me.defaults.colours.slice(),
@@ -64,35 +56,7 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
 	}
     },
 
-    addCharacters: function() {
-	var me = this;
-	Array.prototype.push.apply(me.stream, arguments);
-    },
-
-    parseStream: function() {
-	var me = this;
-	var stream = me.stream.join("").split("\x1b");
-	me.stream = []
-
-	for (var i = 0; i < stream.length; i++) {
-	    if (me.funcMode) {
-		me.parseFunctions(stream[i]);
-	    }
-	    else {
-		me.terminal_print_chars(stream[i]);
-	    }
-	    me.funcMode = !me.funcMode;
-	}
-
-	if (stream[stream.length - 1]) {
-	    me.funcMode = !me.funcMode;
-	}
-    },
-
-    parseFunctions: function(stream) {
-    },
-
-    terminal_print_char: function(code) {
+    addCharacter: function(code) { // throws Error
 	var me = this;
 
 	// Some stuff only happens if the cursor is at right edge before printing and overflowed
@@ -112,7 +76,7 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
 		break;
 
 	    default:
-		throw RangeError("terminal inconsistency detected, cursor wrap overflow is set, but cursor wrap mode is "+me.cursor.wrap);
+		throw Error("terminal inconsistency detected, cursor wrap overflow is set, but cursor wrap mode is "+me.cursor.wrap);
 	    }
 
 	}
@@ -131,7 +95,7 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
 	}
     },
 
-    terminal_print_chars: function(chars) { // throws RangeError
+    addCharacters: function(chars) { // throws RangeError
 	var me = this;
 
 	for (var i = 0; i < chars.length; i++) {
@@ -141,26 +105,26 @@ Lowtek.util.merge(Lowtek.terminal.ScreenVM.prototype, {
 		// Special case for nonprintable characters < ASCII 32
 		// So far only minimal support; only newline (10) implemented
 		switch (code) {
-		    case 10: me.terminal_newline(); break;
+		    case 10: me.command_newline(); break;
 		    default: throw RangeError("Unsupported nonprintable character ASCII "+code); break
 		}
 	    }
 	    else {
-		me.terminal_print_char(code);
+		me.addChar(code);
 	    }
 	}
     },
 
-    terminal_newline: function() {
+    command_newline: function() {
 	var me = this;
 
 	me.cursor.position.x = 0;
 	if (++me.cursor.position.y == me.height) {
-	    me.terminal_scroll_up();
+	    me.command_scroll_up();
 	}
     },
 
-    terminal_scroll_up: function(lines) {
+    command_scroll_up: function(lines) { // throws RangeError
 	var me = this;
 
 	lines = lines || 1;

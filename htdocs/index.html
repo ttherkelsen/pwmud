@@ -9,9 +9,10 @@
     <script src="js/Lowtek.dom.js"></script>
     <script src="js/Lowtek.Core.js"></script>
 
-    <!-- Terminal -->
-    <script src="js/Lowtek.terminal.ScreenVM.js"></script>
-    <script src="js/Lowtek.terminal.Terminal.js"></script>
+    <!-- Client -->
+    <script src="js/Lowtek.client.Window.js"></script>
+    <script src="js/Lowtek.client.Terminal.js"></script>
+    <script src="js/Lowtek.client.Client.js"></script>
 
     <!-- Managers -->
     <script src="js/Lowtek.manager.Font.js"></script>
@@ -24,8 +25,8 @@
     <script src="js/Lowtek.setup.js"></script>
   </head>
   <body onLoad="Lowtek.runtime.setup();">
-    <div id="pywebmud-client">
-      <canvas id="pwm-canvas" width="320" height="30"></canvas>
+    <div id="pwmud-client">
+      <canvas id="pwm-canvas"></canvas>
     </div>
   </body>
 </html>

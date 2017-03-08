@@ -3,7 +3,7 @@ Stage: Initial Connection
 When a new connection is made and the initial WebSocket protocol
 negotiation is successful,
 
-   controller.new_connection(local_endpoint, remote_endpoint)
+   controller.network_connect(local_endpoint, remote_endpoint)
    local_endpoint = (local IP, local port)
    remote_endpoint = (remote IP, remote port)
 
@@ -14,43 +14,46 @@ a connection.
 If a PWMud object is not returned, or the returned object is already
 handling a connection, the new connection will immediately be aborted.
 
-If an exception is raised from new_connection(), the connection will
+If an exception is raised from network_connect(), the connection will
 immediately be aborted.
 
-After new_connection() returns a delay of MAXTIME_INITIAL_CONNECTION
+After network_connect() returns a delay of MAXTIME_INITIAL_CONNECTION
 (default 5 seconds) is begun.  If the connection is still in the
 initial stage when this delay times out, the connection will be
 aborted.
 
+A message it sent to the client:
+
+   type: version
+   msg: <a version string>
+
+The only valid response from the client is another type: version
+message containing a version string.  If the server accepts the
+returned version the stage moves on to Configuration connection.
+
+Any other message types received from the client will cause the
+connection to be aborted.
+
 
 Stage: Configuring Conection
 
-The connection object will remain in the "Initial" stage until it
-receives the following message from the remote client:
+In this stage, the server sends a number of configuration commands to
+the client.  These all follow this format:
 
-   type: init
-   ready: true
-
-At this point, the connection object will switch to "Configuring" stage
-and begin to send configuration commands to the remote client.
-
-It will end the configuration commands with:
-
-   type: init
-   completed: true
+    type: command
+    cmd: <configuration command to carry out>
 
 If the connection object remains in this stage for longer than
 MAXTIME_CONFIGURING_CONNECTION (default 30 seconds) it will abort the
 connection.
 
+The client must not send any data to the server during this stage.
+Any such data will cause the connection to be aborted.
 
 Stage: Unauthorised Connection
 
 The connection object will enter the "Unauthorised" stage once the
-remote client answers the end of configuration message with:
-
-   type: init
-   completed: true
+server is done sending configuration commands.
 
 In this stage, the connection object will try to authorise the
 connection (ie., ask for user login).

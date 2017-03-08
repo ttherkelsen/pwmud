@@ -43,7 +43,7 @@ class Engine(object):
         self.object_stack = []
 
     def setup_logging(self):
-        # 1 - All logging goes to the logging file (default pwmud.log)
+        # 1 - All logging goes to the logging file (default pwmud.debug.log)
         # 2 - INFO or higher goes to the screen (stderr)
         # 3 - Selected names, regardless of level, goes to the screen (stderr)
         root = logging.getLogger()
@@ -89,6 +89,11 @@ class Engine(object):
         self.debug("Running controller.init()")
         self.start_call(self.config.controller, 'init')
 
+        self.debug("Running controller.global_names()")
+        gfuns = self.start_call(self.config.controller, 'global_names')
+        for name, value in gfuns:
+            self.builtins[name] = value
+        
         self.debug("Starting network loop")
         network.loop.run(self)
         self.debug("Network loop ended, performing final cleanup before exiting")

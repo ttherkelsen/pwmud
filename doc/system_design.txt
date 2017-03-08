@@ -1,0 +1,7 @@
+PWMud (Python Web Mud, pronounced "pee wee mud") follows the
+traditional server-client model, expressed thus:
+
++-----------+
+|           |
+|  Server   |
+|           |

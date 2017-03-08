@@ -1,0 +1,23 @@
+There is a limited number of legal message types; some may be sent
+from server or client only, others may be sent from both sides of the
+connection.
+
+output - This type is sent only from the server and represents textual
+output that the client should display in a terminal window.  Note: an
+output message may contain embedded commands which the receiving
+terminal must process as appropriate.
+
+input - This type is sent only from the client and represents textual
+input from the user.
+
+query - This type may be used by both sides of the connection,
+although it will typically only be the server side that uses this.  It
+is used to ask the other side for information; the reply must come in
+the form of a response type message, containing the same id as was
+sent in the previous query message.
+
+response - See query.
+
+command - This type is sent only from the server and is a direct
+instruction to the client.  For example, to add a terminal, or to
+connect to a different server.

@@ -17,7 +17,7 @@ Lowtek.runtime.setup = function() {
     Lowtek.runtime.client = new Lowtek.client.Client({ url: 'ws://lowtek.dk:4000/', protocol: 'pywebmud' });
     return;
     
-    var term = new Lowtek.terminal.Terminal({
+    let term = new Lowtek.terminal.Terminal({
 	width: 80,
 	height: 40,
 	canvasId: 'pwm-canvas',

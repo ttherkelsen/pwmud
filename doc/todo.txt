@@ -1,0 +1,11 @@
+- Get basic client-server workflow working
+  + Server WS protocol handling
+  + Client app framework
+  + Client basic Terminal
+  + Client basic Window
+  + Client receive and store output in window
+  + Client render Terminal
+    + render Window
+  - Client window user input
+  - Server handle user input
+  

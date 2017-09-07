@@ -1,0 +1,63 @@
+This document describes how user interactions with the client
+functions.
+
+It is the client's responsibility to capture all relevant user input
+events.  The client may then delegate the visual representation of the
+event to a terminal and/or window.
+
+User interactions with the client can be divided into two methods:
+keyboard and/or mouse.  At this time, keyboard input is described.
+
+Which interactions the client should respond to is defined by the
+server.
+
+Keyboard input is modal; there is always only one terminal and window
+assigned to display the input, but there is a stack of input handlers
+defined.  Only the top of the stack will respond to input.
+
+For example, say you have your terminal setup like this:
+
+   +-------------------+
+   |                   |
+   |  Output Window A  |
+   |                   |
+   +-------------------+
+   |  Input Window B   |
+   +-------------------+
+
+At this point, the input stack only contains ( B ).  Now, a popup
+window is added:
+
+   +-------------------+
+   |  +-------------+  |
+   |  | Popup C     |  |
+   |  +-------------+  |
+   +-------------------+
+   |  Input Window B   |
+   +-------------------+
+
+The input stack is now ( C, B ), which means all keyboard input is
+effectively sent to the popup window; once the popup window is closed,
+it is popped off the input stack so it is back to containing only
+( B ), effectively returning keyboard handling to the original setting.
+
+The input stack starts out empty; it is the server's responsibility to
+add to it as necessary.  This is done with the command push_input
+which always pushes a new input handler to the top of the input stack:
+
+  cmd: push_input
+  data:
+    id: <string, only used for identification purposes>
+    terminal: <id of terminal>
+    window: <id of window>
+    mode: 'line' or 'char'
+
+Removing from the input stack is done with pop_input, if done without
+an id, it will pop off the top of the input stack.
+
+When the input stack is not empty, the client will respond to user
+keyboard input.  If input mode is "line", an input line is built in
+the client (visually represented in the selected window) which is then
+sent to the server when the user presses enter.  If input mode is
+"char" every key press is sent directly to the server without being
+displayed in the client.

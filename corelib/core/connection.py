@@ -49,11 +49,11 @@ class connection(load_class("/core/classes/core"), load_class("/core/mixins/term
         pass
 
     def version_network_connect(self):
-        send_message({'type': 'query', 'query': 'version', 'id': self.get_objname()})
+        send_message(self.terminal_query_version(self.get_objname()))
         return 'ok'
 
     def version_network_message(self, message):
-        if ( message.get('type') != 'response' 
+        if ( message.get('cmd') != 'response' 
              or message.get('id') != self.get_objname() 
              or message.get('response') != library_version() ):
             return self.abort_connection()
@@ -61,5 +61,22 @@ class connection(load_class("/core/classes/core"), load_class("/core/mixins/term
         return 'next'
 
     def config_init(self):
-        send_message(self.terminal_init('9x15', ('ffffffff', '000000ff'), (80, 40)))
+        send_message(self.terminal_add_terminal('pwm-canvas', (80, 30)))
+        send_message(self.terminal_add_window('output', (0, 0), (80, 29)))
+        send_message(self.terminal_add_window(
+            'input', (0, 29), (80, 1), bgcolour=(15, 15, 15, 255), cursorVisible=True)
+        )
+        send_message(self.terminal_push_input('pwm-canvas', 'input'))
+        send_message(self.terminal_set_active_window('output'))
+        return 'next'
+
+    def active_init(self):
+        send_message("Welcome to PWMud!\n")
+        return 'ok'
+
+    def active_network_message(self, message):
+        if message.get('cmd') != 'input':
+            return self.abort_connection()
+        
+        send_message("You sent: %s\n" % message.get('data'))
         return 'ok'

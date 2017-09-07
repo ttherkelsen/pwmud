@@ -2,15 +2,21 @@ There is a limited number of legal message types; some may be sent
 from server or client only, others may be sent from both sides of the
 connection.
 
-output - This type is sent only from the server and represents textual
-output that the client should display in a terminal window.  Note: an
-output message may contain embedded commands which the receiving
-terminal must process as appropriate.
+A message may be string, object or an array containing string or
+object elements.  A string message, when received by the server, is
+converted to an input command object.  When received by the client, it is
+converted to an output command object.
 
-input - This type is sent only from the client and represents textual
+An object message must contain a 'cmd' attribute with a string value
+that matches one of these values:
+
+output - This command is sent only from the server and represents
+textual output that the client should display in a terminal window.
+
+input - This command is sent only from the client and represents textual
 input from the user.
 
-query - This type may be used by both sides of the connection,
+query - This command may be used by both sides of the connection,
 although it will typically only be the server side that uses this.  It
 is used to ask the other side for information; the reply must come in
 the form of a response type message, containing the same id as was
@@ -18,6 +24,19 @@ sent in the previous query message.
 
 response - See query.
 
-command - This type is sent only from the server and is a direct
-instruction to the client.  For example, to add a terminal, or to
-connect to a different server.
+<command> - This type is sent only from the server and is a direct
+instruction to the client.  For example, to add a terminal
+(add_terminal), to connect to a different server (server_connect), or
+to change text colour in the active window (text_colour).
+
+A message will typically contain other attributes than just "cmd":
+
+data - many message types use the "data" attribute to for, well, data
+
+terminal - normally, a message is routed to the currently active
+terminal; by using this attribute and specifying the terminal id, you
+can change which terminal the message is sent to, without changing
+which terminal is currently active.
+
+window - same concept as terminal attribute, but applies to windows
+inside a terminal instead.

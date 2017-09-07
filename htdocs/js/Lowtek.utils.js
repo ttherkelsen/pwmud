@@ -1,4 +1,13 @@
-Lowtek = {};
+"use strict";
+
+// Ideally, one would use const here instead of var.  The problem is
+// that const and let both create bindings in a special global context
+// that you can't access programmatically (which ns() needs in order
+// to work).  Thus this has to use var for now.  Later, once modules
+// are properly supported in browsers, this will be handled with a
+// module imported Singleton object instead.
+var Lowtek = {};
+
 Lowtek.util = {};
 
 Lowtek.DEBUG = true;
@@ -14,30 +23,45 @@ Lowtek.nextGUID = function() {
     return Lowtek.GUID++;
 };
 
-Lowtek.util.ns = function() {
-    for (var i = 0; i < arguments.length; i++) {
-	var parts = arguments[i].split(".");
-	var obj = window;
+Lowtek.util.objectEntries = function(obj) {
+    let iter = Reflect.ownKeys(obj)[Symbol.iterator]();
 
-	for (var j = 0; j < parts.length; j++) {
-	    if (!(parts[j] in obj)) {
-		obj[parts[j]] = {};
+    return {
+        [Symbol.iterator]() {
+            return this;
+        },
+        next() {
+            let { done, value: key } = iter.next();
+            if (done) {
+                return { done: true };
+            }
+            return { value: [key, obj[key]] };
+        }
+    };
+};
+
+Lowtek.util.ns = function() {
+    for (let i = 0; i < arguments.length; i++) {
+	let obj = window;
+
+	for (let part of arguments[i].split(".")) {
+	    if (!(part in obj)) {
+		obj[part] = {};
 	    }
-	    obj = obj[parts[j]];
-	};
+	    obj = obj[part];
+	}
     }
 };
 
 Lowtek.util.merge = function(/* obj1, ..., objN */) {
-    var obj1 = arguments[0];
+    // FIXME: Is this used anymore?  Can be replaced with Object.assign()
+    let obj1 = arguments[0];
 
-    for (var i = 1; i < arguments.length; i++) {
-	var objN = arguments[i];
+    for (let i = 1; i < arguments.length; i++) {
+	let objN = arguments[i];
 
-	for (var p in objN) {
-	    if (objN.hasOwnProperty(p)) {
-		obj1[p] = objN[p];
-	    }
+	for (let [p, v] of Lowtek.util.objectEntries(objN)) {
+	    obj1[p] = v;
 	}
     }
 
@@ -47,14 +71,14 @@ Lowtek.util.merge = function(/* obj1, ..., objN */) {
 // Only difference between merge and mixin is that the latter will not
 // overwrite existing properties in obj1
 Lowtek.util.mixin = function(/* obj1, ..., objN */) {
-    var obj1 = arguments[0];
+    let obj1 = arguments[0];
 
-    for (var i = 1; i < arguments.length; i++) {
-	var objN = arguments[i];
+    for (let i = 1; i < arguments.length; i++) {
+	let objN = arguments[i];
 
-	for (var p in objN) {
-	    if (objN.hasOwnProperty(p) && !(p in obj1)) {
-		obj1[p] = objN[p];
+	for (let [p, v] of Lowtek.util.objectEntries(objN)) {
+	    if (!(p in obj1)) {
+		obj1[p] = v;
 	    }
 	}
     }
@@ -63,17 +87,16 @@ Lowtek.util.mixin = function(/* obj1, ..., objN */) {
 };
 
 Lowtek.util.inherit = function(subClass, superClass) {
+    // FIXME: This should not be used anymore
     subClass.prototype = Object.create(superClass.prototype);
     subClass.prototype.constructor = subClass;
 };
 
 Lowtek.util.objectSize = function(obj) {
-    var size = 0;
+    let size = 0;
 
-    for (var k in obj) {
-	if (obj.hasOwnProperty(k)) {
-	    size++;
-	}
+    for (let [k, v] of Lowtek.util.objectEntries(obj)) {
+	size++;
     }
 
     return size;

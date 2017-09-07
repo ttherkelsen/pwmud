@@ -162,7 +162,8 @@ class WebSocketProtocol(asyncio.Protocol):
             return self.abort_connection("got opcode 1 frame while in continuation mode")
 
         if frame.fin:
-            self.engine.network_message(frame.payload.decode(), self)
+            # FIXME: Guard against non-valid JSON objects
+            self.engine.network_message(json.loads(frame.payload.decode()), self)
         else:
             # Start continuation mode
             self.payload = frame.payload

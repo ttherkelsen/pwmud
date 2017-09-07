@@ -1,0 +1,96 @@
+This document describes how the HTML5/javascript frontend client
+rendering functions.
+
+The client can have any number of terminals attached to it.  Each
+terminal is completely independant of eachother.  The client will only
+send server data to one terminal at the time.  It is possible to
+change which terminal is active with a client command.
+
+Each terminal consists of a number of named windows.  A special window
+named 'root' is created when a terminal is first added to the client.
+
+All windows have one parent window and any number of child windows.
+The root window being the only exception as it has no parent window.
+If a setting is not explicitly overwritten in a window, it inherits
+the setting from its parent window recursively.  That is, if parent
+window does not have the setting either, then parent of parent window
+is examined, until the root window is reached.  The root window has
+default values for all settings.
+
+All windows have a view port, which has the exact dimension of the
+window itself.  Under normal circumstances, the view port never
+changes.  However, should (part of) a child window fall outside the
+dimensions of the parent window, the view port is used to define which
+part of the child window is currently visible in the parent window.  A
+view port would typically provide scrollbar(s) to indicate that some
+content is currently not visible.
+
+The root window is special in that its size determines the size of the
+canvas tag the terminal is rendered in.  The position of this canvas
+tag is determined by the surrounding HTML.  If you resize the root
+window, you will also resize the canvas tag.
+
+A window's size determines how many character rows and columns the
+window contains.  These rows and columns divide the window in a grid
+of cells, each cell containing exactly one character.  The window's
+actual pixel size depends on the font used to render the cells.  All
+cells in a given window are always rendered using the same font.  Two
+different windows can use two different fonts (or the same font in two
+different sizes).
+
+All windows are positioned relative to their parent window.  How
+exactly, depends on the layout type chosen in the parent window, as
+well as settings on the child window.
+
+Layout - absolute.  Using this layout, child windows must set absolute
+position the following rules:
+
+  * values >= 0 indicate absolute positioning from the top or left
+    side of the window, eg., (0, 0) is top left corner, (9, 2) is
+    column 10, row 3.
+
+  * values < 0 indicate absolute position from the bottom or right
+    side of the window, eg., (-1, -1) is bottom right corner, in a
+    window of size (80, 40), (-2, -9) is (78, 31).
+
+Size is set following these rules:
+
+  * values > 0 indicate the absolute size of the window, eg., size
+    (10, 5) is a window 10 columns wide, 5 rows high.
+
+  * values <= 0 are not permitted
+
+  *
+
+Layout - row.
+
+
+  * a value of "*" indicates that the window should expand to fit the
+    size of the parent window, eg., (*, 10) is a window as wide as the
+    parent window, and 10 rows high.
+
+  * In the case of multiple child windows having * along the same
+    axis, each window will be assigned a share of the remaining area,
+    relative to the number of *s it uses for that axis.  Eg., parent
+    window size (10, 10), child A size (10, *), child B size (10, *),
+    then both children would end up size (10, 5).  If you add another
+    Child C size (10, ***) then Child A and B would be size (10, 2),
+    and Child C would be size (10, 6).
+
+    If the number of *s leaves a remainder, the last child gets
+    it. Eg., same parent as before, but A size (10, *), B size (10, *)
+    and C size (10, *) then A and B would be size (10, 3) and C would
+    be size (10, 4)
+
+Rendering the entire terminal is done 
+
+Window settings:
+
+order - In the case of more than one child, the order the child
+  windows are rendered depend on this setting (lower value == earlier
+  rendering).  When you add a child to a window, and don't manually
+  specify order, it will be 1 higher than the highest order so far (or
+  0 if adding first child).  In the case of more than one window with
+  the same order, the individual ordering of the affected windows is
+  undefined.  This setting also affects the position of windows in the
+  case of using a stacking layout type and * is used.

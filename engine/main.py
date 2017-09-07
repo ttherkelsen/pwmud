@@ -122,7 +122,7 @@ class Engine(object):
         
     def execute_file(self, fn, code, globals=None, locals=None):
         try:
-            exec(code, globals, locals)
+            exec(compile(code, fn, 'exec'), globals, locals)
         except SyntaxError as err:
             error_class = err.__class__.__name__
             detail = err.args[0]
@@ -183,8 +183,8 @@ class Engine(object):
 
     def load_class(self, pwmfn):
         if pwmfn not in self.classes:
-            env = { '__builtins__': self.builtins }
             far = self.load_file(pwmfn +".py")
+            env = { '__builtins__': self.builtins }
             cls = far.basename()[:-3]
             self.execute_file(far.path, far.data, env)
             if cls not in env or not isinstance(env[cls], type):
